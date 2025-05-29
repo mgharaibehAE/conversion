@@ -1,9 +1,8 @@
 import streamlit as st
-import PyPDF2
+import pdfplumber
 from fpdf import FPDF
 import io
 
-# Configure page
 st.set_page_config(page_title="PDF Upload & Export", page_icon="📄")
 
 st.header("Upload and Convert PDF")
@@ -11,41 +10,48 @@ st.header("Upload and Convert PDF")
 uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"])
 
 if uploaded_file:
-    reader = PyPDF2.PdfReader(uploaded_file)
     file_text = ""
-    for page in reader.pages:
-        file_text += page.extract_text() + "\n"
 
-    st.subheader("Extracted Text")
-    st.text_area("PDF Text", file_text, height=250)
+    # Using pdfplumber for more robust extraction
+    with pdfplumber.open(uploaded_file) as pdf:
+        for page in pdf.pages:
+            extracted = page.extract_text()
+            if extracted:
+                file_text += extracted + "\n"
 
-    export_option = st.selectbox("Export format", ["PDF", "TXT"])
+    if file_text.strip():  # Check if any text was extracted
+        st.subheader("Extracted Text")
+        st.text_area("PDF Text", file_text, height=250)
 
-    if st.button("Export File"):
-        if export_option == "PDF":
-            pdf = FPDF()
-            pdf.add_page()
-            pdf.set_font("Arial", size=12)
+        export_option = st.selectbox("Export format", ["PDF", "TXT"])
 
-            lines = file_text.split('\n')
-            for line in lines:
-                pdf.multi_cell(0, 10, line)
+        if st.button("Export File"):
+            if export_option == "PDF":
+                pdf = FPDF()
+                pdf.add_page()
+                pdf.set_font("Arial", size=12)
 
-            pdf_buffer = io.BytesIO()
-            pdf.output(pdf_buffer)
-            pdf_buffer.seek(0)
+                lines = file_text.split('\n')
+                for line in lines:
+                    pdf.multi_cell(0, 10, line)
 
-            st.download_button(
-                label="Download PDF",
-                data=pdf_buffer,
-                file_name="converted_file.pdf",
-                mime="application/pdf"
-            )
+                pdf_buffer = io.BytesIO()
+                pdf.output(pdf_buffer)
+                pdf_buffer.seek(0)
 
-        elif export_option == "TXT":
-            st.download_button(
-                label="Download TXT",
-                data=file_text,
-                file_name="converted_file.txt",
-                mime="text/plain"
-            )
+                st.download_button(
+                    label="Download PDF",
+                    data=pdf_buffer,
+                    file_name="converted_file.pdf",
+                    mime="application/pdf"
+                )
+
+            elif export_option == "TXT":
+                st.download_button(
+                    label="Download TXT",
+                    data=file_text,
+                    file_name="converted_file.txt",
+                    mime="text/plain"
+                )
+    else:
+        st.warning("No text could be extracted from the PDF. It may contain scanned images rather than selectable text.")
