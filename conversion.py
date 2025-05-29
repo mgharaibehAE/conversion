@@ -1,50 +1,51 @@
 import streamlit as st
-import openai
-from docx import Document
 import PyPDF2
 from fpdf import FPDF
 import io
-import time
 
-with st.container():
-    st.header("Upload and Convert PDF")
+# Configure page
+st.set_page_config(page_title="PDF Upload & Export", page_icon="📄")
 
-    uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"])
+st.header("Upload and Convert PDF")
 
-    if uploaded_file:
-        if uploaded_file.type == "application/pdf":
-            reader = PyPDF2.PdfReader(uploaded_file)
-            file_text = ""
-            for page in reader.pages:
-                file_text += page.extract_text() + "\n"
+uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"])
 
-            st.subheader("Extracted Text")
-            st.text_area("PDF Text", file_text, height=250)
+if uploaded_file:
+    reader = PyPDF2.PdfReader(uploaded_file)
+    file_text = ""
+    for page in reader.pages:
+        file_text += page.extract_text() + "\n"
 
-            # Export functionality
-            export_option = st.selectbox("Export format", ["PDF", "TXT"])
+    st.subheader("Extracted Text")
+    st.text_area("PDF Text", file_text, height=250)
 
-            if st.button("Export File"):
-                if export_option == "PDF":
-                    pdf = FPDF()
-                    pdf.add_page()
-                    pdf.set_font("Arial", size=12)
+    export_option = st.selectbox("Export format", ["PDF", "TXT"])
 
-                    for line in file_text.split('\n'):
-                        pdf.multi_cell(0, 10, line)
+    if st.button("Export File"):
+        if export_option == "PDF":
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.set_font("Arial", size=12)
 
-                    pdf_bytes = pdf.output(dest='S').encode('latin1')
-                    st.download_button(
-                        label="Download PDF",
-                        data=pdf_bytes,
-                        file_name="converted_file.pdf",
-                        mime="application/pdf"
-                    )
+            lines = file_text.split('\n')
+            for line in lines:
+                pdf.multi_cell(0, 10, line)
 
-                elif export_option == "TXT":
-                    st.download_button(
-                        label="Download TXT",
-                        data=file_text,
-                        file_name="converted_file.txt",
-                        mime="text/plain"
-                    )
+            pdf_buffer = io.BytesIO()
+            pdf.output(pdf_buffer)
+            pdf_buffer.seek(0)
+
+            st.download_button(
+                label="Download PDF",
+                data=pdf_buffer,
+                file_name="converted_file.pdf",
+                mime="application/pdf"
+            )
+
+        elif export_option == "TXT":
+            st.download_button(
+                label="Download TXT",
+                data=file_text,
+                file_name="converted_file.txt",
+                mime="text/plain"
+            )
