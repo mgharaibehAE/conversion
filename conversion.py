@@ -5,7 +5,7 @@ import io
 from pdf2image import convert_from_bytes
 import pytesseract
 
-st.set_page_config(page_title="PDF Upload & Export", page_icon="📄")
+st.set_page_config(page_title="PDF Upload & OCR", page_icon="📄")
 
 st.header("Upload and Convert PDF")
 
@@ -14,16 +14,16 @@ uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"])
 if uploaded_file:
     file_text = ""
 
-    # First try extracting text using pdfplumber
+    # Try standard text extraction first
     with pdfplumber.open(uploaded_file) as pdf:
         for page in pdf.pages:
             extracted = page.extract_text()
             if extracted:
                 file_text += extracted + "\n"
 
-    # If pdfplumber fails, use OCR
+    # Automatically apply OCR if no text is extracted
     if not file_text.strip():
-        images = convert_from_bytes(uploaded_file.read())
+        images = convert_from_bytes(uploaded_file.getvalue())
         for image in images:
             file_text += pytesseract.image_to_string(image) + "\n"
 
