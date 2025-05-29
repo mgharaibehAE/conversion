@@ -2,6 +2,8 @@ import streamlit as st
 import pdfplumber
 from fpdf import FPDF
 import io
+from pdf2image import convert_from_bytes
+import pytesseract
 
 st.set_page_config(page_title="PDF Upload & Export", page_icon="📄")
 
@@ -12,14 +14,20 @@ uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"])
 if uploaded_file:
     file_text = ""
 
-    # Using pdfplumber for more robust extraction
+    # First try extracting text using pdfplumber
     with pdfplumber.open(uploaded_file) as pdf:
         for page in pdf.pages:
             extracted = page.extract_text()
             if extracted:
                 file_text += extracted + "\n"
 
-    if file_text.strip():  # Check if any text was extracted
+    # If pdfplumber fails, use OCR
+    if not file_text.strip():
+        images = convert_from_bytes(uploaded_file.read())
+        for image in images:
+            file_text += pytesseract.image_to_string(image) + "\n"
+
+    if file_text.strip():
         st.subheader("Extracted Text")
         st.text_area("PDF Text", file_text, height=250)
 
@@ -54,4 +62,4 @@ if uploaded_file:
                     mime="text/plain"
                 )
     else:
-        st.warning("No text could be extracted from the PDF. It may contain scanned images rather than selectable text.")
+        st.warning("No text could be extracted from the PDF, even with OCR. Please try another file.")
